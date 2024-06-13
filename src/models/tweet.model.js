@@ -8,6 +8,14 @@ const tweetSchema = new Schema(
         },
         media: {
             type: String,
+        },
+        isPosted: {
+            type: Boolean,
+            default: true
+        },
+        owner: {
+            type: Schema.Types.ObjectId,
+            ref: "User"
         }
     },
     {
