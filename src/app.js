@@ -26,4 +26,10 @@ app.use(express.static("public"))
 //to perform CRUD operations of user cookies browser with server securly 
 app.use(cookieParser())
 
+//router import 
+import userRouter from "./routes/user.routes.js"
+
+//router declaration
+app.use("/api/v1/users", userRouter)
+
 export { app }
