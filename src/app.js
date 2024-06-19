@@ -4,10 +4,14 @@ import cors from "cors"
 
 const app = express()
 
-app.use(cors({
-    origin: process.env.CORS_ORIGIN,
-    credentials: true
-}))
+const corsOptions = {
+    origin: 'http://localhost:5173', // Replace with process.env.CORS_ORIGIN if it's correctly set
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions))
 
 //to set limit to take json
 app.use(express.json({
