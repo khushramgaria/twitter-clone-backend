@@ -24,6 +24,15 @@ const userSchema = new Schema(
             type: Date,
             required: true,
         },
+        bio: {
+            type: String
+        },
+        location: {
+            type: String
+        },
+        website: {
+            type: String
+        },
         password: {
             type: String,
             required: [true, "Password is required"],

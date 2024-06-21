@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
-import { deleteTweet, getAllTweets, getUserTweets, publishATweet } from "../controllers/tweet.controllers.js";
+import { deleteTweet, getATweet, getAllTweets, getUserTweets, publishATweet } from "../controllers/tweet.controllers.js";
 
 const router = Router()
 
@@ -24,6 +24,10 @@ router.route("/delete-tweet").delete(
 router.route("/get-all-tweets").get(
     verifyJWT,
     getAllTweets
+)
+
+router.route("/get-a-tweet").get(
+    getATweet
 )
 
 export default router

@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { Tweet } from "../models/tweet.model.js"
+import mongoose from "mongoose"
 import { User } from "../models/user.model.js"
 
 const publishATweet = asyncHandler(async(req, res) => {
@@ -114,7 +115,7 @@ const getAllTweets = asyncHandler( async(req, res) => {
     const tweets = await Tweet.aggregate([
         {
             $match: {
-                owner: { $ne: user?._id}
+                owner: { $ne: user?._id }
             }
         },
         {
@@ -154,4 +155,47 @@ const getAllTweets = asyncHandler( async(req, res) => {
     )
 })
 
-export { publishATweet, getUserTweets, deleteTweet, getAllTweets }
+const getATweet = asyncHandler( async(req, res) => {
+    const id = req.query
+
+    console.log(req.query)
+
+    const tweet = await Tweet.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(id.newTweetId)
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "tweetUserDetail"
+            }
+        },
+        {
+            $unwind: "$tweetUserDetail"
+        },
+        {
+            $project: {
+                description: 1,
+                media: 1,
+                createdAt: 1,
+                "tweetUserDetail.fullName": 1,
+                "tweetUserDetail.username": 1,
+                "tweetUserDetail.avatar": 1
+            }
+        }
+    ])
+
+    console.log("tweet: ", tweet)
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, tweet, "Tweet Fetched !!")
+    )
+})
+
+export { publishATweet, getUserTweets, deleteTweet, getAllTweets, getATweet }
