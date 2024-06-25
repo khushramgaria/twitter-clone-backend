@@ -1,5 +1,6 @@
 import mongoose from "mongoose"
 import {Comment} from "../models/comment.model.js"
+import {Tweet} from "../models/tweet.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
@@ -45,17 +46,7 @@ const getTweetComments = asyncHandler(async (req, res) => {
             }   
         }
     ])
-
-    const totalComments = await Comment.aggregate([
-        {
-            $match: {
-                tweet: new mongoose.Types.ObjectId(tweetId)
-            }
-        },
-        {
-            $count: "commentsCount"
-        }
-    ])
+    
     console.log("comments:")
     console.log(comments)
 

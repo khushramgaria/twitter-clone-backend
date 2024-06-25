@@ -4,6 +4,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+import { Follower } from "../models/followers.model.js";
 
 const generateAccessAndRefreshToken = async (userid) => {
   try {
@@ -280,10 +282,131 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: req.user?._id
+      }
+    },
+    {
+      $lookup: {
+        from: "followers",
+        localField: "_id",
+        foreignField: "channel",
+        as: "followers"
+      }
+    },
+    {
+      $lookup: {
+        from: "followers",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "followedTo"
+      }
+    },
+    {
+      $addFields: {
+        followersCount: {
+          $size: "$followers"
+        },
+        channelFollowedToCount: {
+          $size: "$followedTo"
+        },
+      }
+    },
+    {
+      $project: {
+        followersCount: 1,
+        channelFollowedToCount: 1,
+        fullName: 1,
+        username: 1,
+        email: 1,
+        avatar: 1,
+        coverImage: 1,
+        createdAt: 1,
+        bio: 1,
+        location: 1,
+        website: 1
+      }
+    }
+  ])
+
   return res
-    .status(200)
-    .json(new ApiResponse(200, req.user, "User Fetched Successfully"));
+  .status(200)
+  .json(new ApiResponse(200, user, "Current User Fetched Successfully"));
 });
+
+const getUserChannelProfile = asyncHandler( async(req, res) => {
+  console.log(req.query)
+  const { username } = req.query
+
+  if (!username) {
+    throw new ApiError(400, "username is missing !!")
+  }
+
+  const channel = await User.aggregate([
+    {
+      $match: {
+        username: username?.toLowerCase()
+      }
+    },
+    {
+      $lookup: {
+        from: "followers",
+        localField: "_id",
+        foreignField: "channel",
+        as: "followers"
+      }
+    },
+    {
+      $lookup: {
+        from: "followers",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "followedTo"
+      }
+    },
+    {
+      $addFields: {
+        followersCount: {
+          $size: "$followers"
+        },
+        channelFollowedToCount: {
+          $size: "$followedTo"
+        },
+        isFollowed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$followers.subscriber"] },
+            then: true,
+            else: false
+          }
+        }
+      }
+    },
+    {
+      $project: {
+        followersCount: 1,
+        channelFollowedToCount: 1,
+        isFollowed: 1,
+        fullName: 1,
+        username: 1,
+        avatar: 1,
+        coverImage: 1,
+        createdAt: 1,
+        bio: 1,
+        followers: 1
+      }
+    }
+  ])
+
+  console.log(channel)
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(200, channel, "User Account Profile Fetched !!")
+  )
+})
 
 export {
   registerUser,
@@ -294,4 +417,5 @@ export {
   updateAvatar,
   updateCoverImage,
   getCurrentUser,
+  getUserChannelProfile
 };
