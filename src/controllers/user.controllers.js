@@ -305,6 +305,42 @@ const getCurrentUser = asyncHandler(async (req, res) => {
       }
     },
     {
+      $unwind: {
+        path: "$followedTo",
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "followedTo.channel",
+        foreignField: "_id",
+        as: "followedTo.channelDetails"
+      }
+    },
+    {
+      $unwind: {
+        path: "$followedTo.channelDetails",
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
+      $group: {
+        _id: "$_id",
+        followers: { $first: "$followers" },
+        followedTo: { $push: "$followedTo.channelDetails" },
+        fullName: { $first: "$fullName" },
+        username: { $first: "$username" },
+        email: { $first: "$email" },
+        avatar: { $first: "$avatar" },
+        coverImage: { $first: "$coverImage" },
+        createdAt: { $first: "$createdAt" },
+        bio: { $first: "$bio" },
+        location: { $first: "$location" },
+        website: { $first: "$website" }
+      }
+    },
+    {
       $addFields: {
         followersCount: {
           $size: "$followers"
@@ -326,7 +362,8 @@ const getCurrentUser = asyncHandler(async (req, res) => {
         createdAt: 1,
         bio: 1,
         location: 1,
-        website: 1
+        website: 1,
+        followedTo: 1
       }
     }
   ])

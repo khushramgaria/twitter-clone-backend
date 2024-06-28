@@ -27,7 +27,6 @@ router.route("/get-all-tweets").get(
 )
 
 router.route("/get-a-tweet").get(
-    verifyJWT,
     getATweet
 )
 
