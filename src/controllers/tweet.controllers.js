@@ -323,6 +323,25 @@ const getAllTweets = asyncHandler(async (req, res) => {
       },
     },
     {
+      $lookup: {
+        from: "bookmarks",
+        localField: "_id",
+        foreignField: "tweet",
+        as: "bookmarksTweet",
+      },
+    },
+    {
+      $addFields: {
+        isBookmarked: {
+            $cond: {
+              if: { $in: [user?._id, "$bookmarksTweet.bookmarkBy"] },
+              then: true,
+              else: false,
+            },
+          },
+      },
+    },
+    {
       $project: {
         likesCount: 1,
         commentsCount: 1,
@@ -334,7 +353,8 @@ const getAllTweets = asyncHandler(async (req, res) => {
         "userDetails.avatar": 1,
         isLiked: 1,
         retweetsCount: 1,
-        isRetweet: 1
+        isRetweet: 1,
+        isBookmarked: 1
       },
     },
   ]);
