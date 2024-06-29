@@ -36,6 +36,7 @@ import tweetRouter from "./routes/tweet.routes.js"
 import commentRouter from "./routes/comment.routes.js"
 import likeRouter from "./routes/like.routes.js"
 import followerRouter from "./routes/followers.routes.js"
+import retweetRouter from "./routes/retweet.routes.js"
 
 //router declaration
 app.use("/api/v1/users", userRouter)
@@ -43,5 +44,6 @@ app.use("/api/v1/tweet", tweetRouter)
 app.use("/api/v1/comments", commentRouter)
 app.use("/api/v1/likes", likeRouter)
 app.use("/api/v1/followers", followerRouter)
+app.use("/api/v1/retweets", retweetRouter)
 
 export { app }

@@ -6,6 +6,7 @@ import { Tweet } from "../models/tweet.model.js";
 import mongoose from "mongoose";
 import { User } from "../models/user.model.js";
 import { Comment } from "../models/comment.model.js";
+import { Retweet } from "../models/Retweet.model.js";
 
 const publishATweet = asyncHandler(async (req, res) => {
   const { description } = req.body;
@@ -42,8 +43,7 @@ const publishATweet = asyncHandler(async (req, res) => {
 });
 
 const getUserTweets = asyncHandler(async (req, res) => {
-
-    const user = await User.findById(req.user?._id);
+  const user = await User.findById(req.user?._id);
 
   console.log(user);
 
@@ -97,30 +97,130 @@ const getUserTweets = asyncHandler(async (req, res) => {
         },
       },
     },
-  ]);
-
-  const tweetsCount = await Tweet.aggregate([
     {
-      $match: {
-        owner: user._id,
-      },
+      $lookup: {
+        from: "retweets",
+        localField: "_id",
+        foreignField: "tweet",
+        as: "retweetCount"
+      }
     },
     {
-      $count: "TotalTweets",
-    },
+      $addFields: {
+        retweetsCount: {
+          $size: "$retweetCount"
+        },
+        isRetweet: {
+          $cond: {
+            if: { $in: [user?._id, "$retweetCount.retweetBy"]},
+            then: true,
+            else: false
+          }
+        }
+      }
+    }
   ]);
 
-  console.log("Tweet count: ", tweetsCount);
+  const retweets = await Retweet.aggregate([
+    {
+        $match: {
+            retweetBy: user._id,
+        },
+    },
+    {
+        $lookup: {
+            from: "tweets",
+            localField: "tweet",
+            foreignField: "_id",
+            as: "tweetInfo",
+        },
+    },
+    {
+        $unwind: "$tweetInfo",
+    },
+    {
+        $lookup: {
+            from: "comments",
+            localField: "tweetInfo._id",
+            foreignField: "tweet",
+            as: "commentCount",
+        },
+    },
+    {
+        $lookup: {
+            from: "likes",
+            localField: "tweetInfo._id",
+            foreignField: "tweet",
+            as: "likeCount",
+        },
+    },
+    {
+        $lookup: {
+            from: "retweets",
+            localField: "tweetInfo._id",
+            foreignField: "tweet",
+            as: "retweetCount",
+        },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "tweetInfo.owner",
+        foreignField: "_id",
+        as: "userInfo"
+      }
+    },
+    {
+        $addFields: {
+            "tweetInfo.commentsCount": { $size: "$commentCount" },
+            "tweetInfo.likesCount": { $size: "$likeCount" },
+            "tweetInfo.retweetsCount": { $size: "$retweetCount" },
+            "tweetInfo.isLiked": {
+                $cond: {
+                    if: { $in: [user?._id, "$likeCount.likedBy"] },
+                    then: true,
+                    else: false,
+                },
+            },
+            isRetweet: true,
+        },
+    },
+    {
+        $project: {
+            _id: 0,
+            retweetId: "$_id",
+            retweetedAt: "$createdAt",
+            tweet: "$tweetInfo",
+            isRetweet: 1,
+            user: "$userInfo"
+        },
+    },
+    {
+        $sort: {
+            retweetedAt: -1,
+        },
+    },
+]);
 
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        { tweets, tweetsCount, user },
-        "User Tweets Fetched !!"
-      )
-    );
+console.log("retweet: ", retweets)
+
+const combinedTweets = [...tweets, ...retweets].sort((a, b) =>
+  (b.createdAt || b.retweetedAt) - (a.createdAt || a.retweetedAt)
+);
+
+const tweetsCount = combinedTweets.length;
+
+console.log("Tweet count: ", tweetsCount);
+
+return res
+.status(200)
+.json(
+  new ApiResponse(
+    200,
+    { tweets: combinedTweets, tweetsCount, user },
+    "User Tweets Fetched !!"
+  )
+);
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
@@ -203,6 +303,26 @@ const getAllTweets = asyncHandler(async (req, res) => {
       },
     },
     {
+      $lookup: {
+        from: "retweets",
+        localField: "_id",
+        foreignField: "tweet",
+        as: "retweetCount",
+      },
+    },
+    {
+      $addFields: {
+        retweetsCount: { $size: "$retweetCount" },
+        isRetweet: {
+            $cond: {
+              if: { $in: [user?._id, "$retweetCount.retweetBy"] },
+              then: true,
+              else: false,
+            },
+          },
+      },
+    },
+    {
       $project: {
         likesCount: 1,
         commentsCount: 1,
@@ -212,7 +332,9 @@ const getAllTweets = asyncHandler(async (req, res) => {
         "userDetails.username": 1,
         "userDetails.fullName": 1,
         "userDetails.avatar": 1,
-        isLiked: 1
+        isLiked: 1,
+        retweetsCount: 1,
+        isRetweet: 1
       },
     },
   ]);
@@ -280,6 +402,26 @@ const getATweet = asyncHandler(async (req, res) => {
       },
     },
     {
+      $lookup: {
+        from: "retweets",
+        localField: "_id",
+        foreignField: "tweet",
+        as: "retweetCount",
+      },
+    },
+    {
+      $addFields: {
+        retweetsCount: { $size: "$retweetCount" },
+        isRetweet: {
+          $cond: {
+            if: { $in: [req.user?._id, "$retweetCount.retweetBy"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
       $project: {
         likesCount: 1,
         commentsCount: 1,
@@ -289,7 +431,9 @@ const getATweet = asyncHandler(async (req, res) => {
         "tweetUserDetail.fullName": 1,
         "tweetUserDetail.username": 1,
         "tweetUserDetail.avatar": 1,
-        isLiked: 1
+        isLiked: 1,
+        retweetsCount: 1,
+        isRetweet: 1
       },
     },
   ]);
