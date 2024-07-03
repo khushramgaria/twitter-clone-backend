@@ -281,6 +281,64 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, coverImage, "Cover Image Updated Successfully"));
 });
 
+const checkUserExists = asyncHandler( async(req, res) => {
+  const { userId } = req.body
+
+  console.log(req.body)
+
+  const user = await User.findOne({ $or: [{email: userId}, {username: userId}]})
+
+  if (!user) {
+    return res
+    .status(401)
+    .json(
+      new ApiResponse(401, {}, "Incorrect credentials !!")
+    )
+  }
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(200, user, "User Exists")
+  )
+})
+
+const changePassword = asyncHandler( async(req, res) => {
+  const { userId, oldPassword, newPassword } = req.body
+
+  console.log(req.body)
+
+  const user = await User.findOne({ $or: [{ email: userId }, { username: userId}]})
+
+  console.log(user)
+
+  if (!user) {
+    throw new ApiError(401, "Invalid Credentials !!")
+  }
+
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+  console.log(isPasswordCorrect)
+
+  if (!isPasswordCorrect) {
+    return res
+    .json(
+      { message: "Incorrect old password",
+        statusCode: 401
+       }
+    )
+  }
+
+  user.password = newPassword
+  await user.save({ validateBeforeSave: false})
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(200, {}, "Password Changed Successfully")
+  )
+})
+
 const getCurrentUser = asyncHandler(async (req, res) => {
   const user = await User.aggregate([
     {
@@ -450,9 +508,11 @@ export {
   loginuser,
   logoutUser,
   refreshAccessToken,
+  changePassword,
   updateUserDetails,
   updateAvatar,
   updateCoverImage,
+  checkUserExists,
   getCurrentUser,
   getUserChannelProfile
 };
